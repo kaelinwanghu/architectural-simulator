@@ -18,7 +18,7 @@ import javax.swing.UIManager;
 
 import engine.Assembler;
 import engine.Processor;
-import gui.dialogs.ErrorDialog;
+import gui.dialogs.MessageDialog;
 import gui.dialogs.InstructionSetDialog;
 import gui.dialogs.ScheduleDialog;
 
@@ -31,7 +31,7 @@ public class Simulator extends JFrame {
 	public AssemblyPanel assemblyPanel;
 	public StorageViewer storageViewer;
 
-	public ErrorDialog errorDialog;
+	public MessageDialog errorDialog;
 	private ScheduleDialog scheduleDialog;
 	public InstructionSetDialog instructionSetDialog;
 	
@@ -77,7 +77,7 @@ public class Simulator extends JFrame {
 		
 		processor = new Processor(cacheCofig, unitsConfig);		
 		
-		errorDialog = new ErrorDialog(this);
+		errorDialog = new MessageDialog(this);
 		scheduleDialog = new ScheduleDialog(this);
 		instructionSetDialog = new InstructionSetDialog(this);
 		
@@ -137,6 +137,16 @@ public class Simulator extends JFrame {
 			}
 
 		});
+		
+		JButton about = new JButton("About");
+		about.setFocusable(false);
+		about.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				errorDialog.showAbout();
+			}
+
+		});
 				
 		JPanel p1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
 		p1.add(assemble);
@@ -150,6 +160,7 @@ public class Simulator extends JFrame {
 		JPanel p3 = new JPanel(new BorderLayout(0, 5));
 		p3.add(p1, BorderLayout.NORTH);
 		p3.add(p2);
+		p3.add(about, BorderLayout.SOUTH);
 		
 		main = new JPanel(new BorderLayout(0, 10));
 		main.add(inputPanel);
