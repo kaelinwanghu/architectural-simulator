@@ -156,6 +156,7 @@ public class Simulator extends JFrame {
 		JPanel p2 = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
 		p2.add(execute);
 		p2.add(executeStep);
+		p2.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 		
 		JPanel p3 = new JPanel(new BorderLayout(0, 5));
 		p3.add(p1, BorderLayout.NORTH);
