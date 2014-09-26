@@ -161,7 +161,7 @@ public class StorageViewer extends JPanel {
 	}
 	
 	public Dimension getPreferredSize() {
-		return new Dimension(450, super.getPreferredSize().height);
+		return new Dimension(500, super.getPreferredSize().height);
 	}
 	
 }
