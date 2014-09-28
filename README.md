@@ -18,6 +18,8 @@ See [EXAMPLES.md](/EXAMPLES.md).
 
 ### Download
 
+[Version 1.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar)
+
 ### Screenshots
 
 ![screen1](/screenshots/screen3.jpg)
