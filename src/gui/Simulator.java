@@ -59,6 +59,10 @@ public class Simulator extends JFrame {
 		UIManager.put("TableHeader.font", new Font("Consolas", Font.PLAIN, 17));
 		UIManager.put("Table.foreground", new Color(100, 100, 100));
 						
+		ImageIcon i1 = new ImageIcon(getClass().getClassLoader().getResource("gui/resources/microchip1.png")); 
+		ImageIcon i2 = new ImageIcon(getClass().getClassLoader().getResource("gui/resources/microchip2.png"));		
+		setIconImages(Arrays.asList(i1.getImage(), i2.getImage()));
+		
 		int[][] cacheCofig = {
 			{1024, 0, 32, 100},
 			{2, 8, 8, 5},
@@ -171,11 +175,7 @@ public class Simulator extends JFrame {
 		add(main);
 		add(storageViewer, BorderLayout.EAST);
 		setResizable(false);
-		
-		ImageIcon i1 = new ImageIcon(getClass().getClassLoader().getResource("gui/resources/microchip1.png")); 
-		ImageIcon i2 = new ImageIcon(getClass().getClassLoader().getResource("gui/resources/microchip2.png"));		
-		setIconImages(Arrays.asList(i1.getImage(), i2.getImage()));
-		
+				
 		pack();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLocationRelativeTo(null);

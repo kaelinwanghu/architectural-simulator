@@ -27,7 +27,7 @@ public class ScheduleDialog extends JDialog {
 	private JTextArea data;
 	
 	public ScheduleDialog(Simulator simulator) {
-		super(simulator, "Instruction Scheduling Using Speculative Tomasulo's Algorithm");
+		super(simulator, "Instruction Scheduling");
 		
 		setIconImage(simulator.getIconImage());
 		

@@ -31,9 +31,7 @@ public class MessageDialog extends JDialog {
 		super(main, true);
 		
 		image = new JLabel();
-		
-		setIconImage(main.getIconImage());
-		
+
 		text = new JTextArea();
 		text.setOpaque(false);
 		text.setEditable(false);
