@@ -22,6 +22,11 @@ public class InstructionSet {
 		r1.setValue((short)(r2.getValue() + immediate));
 		return new Object[]{FunctionType.ADD, r1.getNumber(), -1};
 	}
+
+	public Object[] lui(Register r, int immediate) {
+		r.setValue((short)(immediate << 6));
+		return new Object[]{FunctionType.LOAD, r.getNumber(), -1};
+	}
 	
 	public Object[] sub(Register r1, Register r2, Register r3) {
 		r1.setValue((short)(r2.getValue() - r3.getValue()));
@@ -32,7 +37,6 @@ public class InstructionSet {
 		r1.setValue((short)(r2.getValue() - immediate));
 		return new Object[]{FunctionType.ADD, r1.getNumber(), -1};
 	}
-	
 	
 	public Object[] and(Register r1, Register r2, Register r3) {
 		r1.setValue((short)(r2.getValue() & r3.getValue()));
@@ -191,7 +195,6 @@ public class InstructionSet {
 		processor.getRegisterFile().setPc(r2.getValue());
 		return new Object[]{FunctionType.JUMP_AND_LINK, r1.getNumber(), (int)r2.getValue()};
 	}
-	
 	
 	public static Method getMethod(String operation) {
 		Method[] methods = InstructionSet.class.getDeclaredMethods();

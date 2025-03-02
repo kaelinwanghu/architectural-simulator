@@ -1,8 +1,15 @@
 package engine;
 
 import engine.types.Register;
+import java.util.HashSet;
+import java.util.Arrays;
 
-public class Assembler {
+public final class Assembler {
+
+	// Assembler should not be initialized, given that it is essentially a static class
+	private Assembler() {
+		throw new IllegalStateException("Utility class");
+	}
 
 	public static void assemble(String data, String program, Processor processor) {
 		if (program.trim().isEmpty())
@@ -17,14 +24,12 @@ public class Assembler {
 			// Remove comments if there are any for each line, and trim it
 			String cleanLine = removeComment(line).trim();
 			// If the line still has something, parse it and indicate that instructions exist
-			if (!cleanLine.isEmpty())
-			{
+			if (!cleanLine.isEmpty()) {
 				hasInstruction = true;
 				parseInstruction(cleanLine, processor);
 			}
 		}
-		if (!hasInstruction)
-		{
+		if (!hasInstruction) {
 			throw new IllegalArgumentException("Please enter one or more instructions");
 		}
 		
@@ -32,11 +37,9 @@ public class Assembler {
 			return;
 			
 		lines = data.trim().split("\\n+");
-		for (String line : lines)
-		{
+		for (String line : lines) {
 			String cleanLine = removeComment(line).trim();
-			if (!cleanLine.isEmpty())
-			{
+			if (!cleanLine.isEmpty()) {
 				parseData(cleanLine, processor);
 			}
 		}
@@ -58,6 +61,10 @@ public class Assembler {
 		for (int i = 0; i < operands.length; i++) {
 			operands[i] = operands[i].trim();
 		}
+		if (pseudoInstructions.contains(operation)) {
+			// parsePseudoInstruction(operation, operands, processor);
+			return;
+		}
 		Class<?>[] types = InstructionSet.getMethod(operation).getParameterTypes();
 		if (types == null)
 			throw new IllegalArgumentException(operation + " is an invalid operation");
@@ -73,9 +80,13 @@ public class Assembler {
 					throw new IllegalArgumentException(operands[i] + " is an invalid register name");
 				parameters[i] = r;
 			} else if (types[i] == int.class) {
-				int immediate = parseInteger(operands[i]);
-				if (immediate < -64 || immediate > 63)
-					throw new IllegalArgumentException("Immediate must be a value between -64 and 63");
+				int immediate = parseInteger(operands[i]); 
+				if (operation.equals("lui") && (immediate < 0 || immediate > 1023)) {
+					throw new IllegalArgumentException("Immediate must be a value between 0x000 and 0x3ff");
+				}
+				else if (immediate < -64 || immediate > 63) {
+					throw new IllegalArgumentException("Signed immediate must be a value between -64 and 63");
+				}
 				parameters[i] = immediate;
 			}
 		}
@@ -119,4 +130,60 @@ public class Assembler {
 		throw new IllegalArgumentException(number + " is an invalid short");
 	}
 
+	public static void parsePseudoInstruction(String operation, String[] operands, Processor processor)
+	{
+		StringBuilder actualInstructions = new StringBuilder();
+		switch (operation) {
+			case "nop": {
+				actualInstructions.append("add r0, r0 ");
+				for (int i = 0; i < operands.length; ++i)
+				{
+					actualInstructions.append(operands);
+					actualInstructions.append(" ");
+				}
+				parseInstruction(actualInstructions.toString(), processor);
+				break;
+			}
+			case "halt": {
+				actualInstructions.append("jalr r0, r0 ");
+				for (int i = 0; i < operands.length; ++i)
+				{
+					actualInstructions.append(operands);
+					actualInstructions.append(" ");
+				}
+				parseInstruction(actualInstructions.toString(), processor);
+				break;
+			}
+			case "lli": {
+				actualInstructions.append("add " + (parseInteger(operands[0]) & 0x3f));
+				for (int i = 1; i < operands.length; ++i)
+				{
+					actualInstructions.append(operands);
+					actualInstructions.append(" ");
+				}
+				parseInstruction(actualInstructions.toString(), processor);
+				break;
+			}
+			case "movi": {
+				actualInstructions.append("lui " + (parseInteger(operands[0]) & 0x3ff));
+				for (int i = 0; i < operands.length; ++i)
+				{
+					actualInstructions.append(operands);
+					actualInstructions.append(" ");
+				}
+				parseInstruction(actualInstructions.toString(), processor);
+				actualInstructions.setLength(0);
+				actualInstructions.append("add " + (parseInteger(operands[0]) & 0x3f));
+				parseInstruction(actualInstructions.toString(), processor);
+				break;
+			}
+			case ".fill": {
+				break;
+			}
+			case ".space": {
+				break;
+			}
+		}
+	}
+	private static final HashSet<String> pseudoInstructions = new HashSet<>(Arrays.asList("nop", "halt", "lli", "movi", ".fill", ".space"));
 }
