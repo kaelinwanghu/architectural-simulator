@@ -11,16 +11,46 @@ public class Assembler {
 		processor.clear();
 		
 		String[] lines = program.toLowerCase().trim().split("\\n+");
+		boolean hasInstruction = false;
 		for (String line : lines)
-			parseInstruction(line.trim(), processor);
+		{
+			// Remove comments if there are any for each line, and trim it
+			String cleanLine = removeComment(line).trim();
+			// If the line still has something, parse it and indicate that instructions exist
+			if (!cleanLine.isEmpty())
+			{
+				hasInstruction = true;
+				parseInstruction(cleanLine, processor);
+			}
+		}
+		if (!hasInstruction)
+		{
+			throw new IllegalArgumentException("Please enter one or more instructions");
+		}
 		
 		if (data.trim().isEmpty())
 			return;
 			
 		lines = data.trim().split("\\n+");
 		for (String line : lines)
-			parseData(line.trim(), processor);
+		{
+			String cleanLine = removeComment(line).trim();
+			if (!cleanLine.isEmpty())
+			{
+				parseData(cleanLine, processor);
+			}
+		}
 	}
+
+	/**
+	 * Removes the comment section of a line (anything that goes after the '#' character)
+	 * @param line the line string to be parsed
+	 * @return the line without the comment section
+	 */
+	private static String removeComment(String line) {
+        int commentIndex = line.indexOf('#');
+        return (commentIndex >= 0) ? line.substring(0, commentIndex) : line;
+    }
 	
 	private static void parseInstruction(String instruction, Processor processor) {
 		String operation = instruction.substring(0, instruction.indexOf(' '));
