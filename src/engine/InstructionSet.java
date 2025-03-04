@@ -195,7 +195,7 @@ public class InstructionSet {
 		processor.getRegisterFile().setPc(r2.getValue());
 		return new Object[]{FunctionType.JUMP_AND_LINK, r1.getNumber(), (int)r2.getValue()};
 	}
-	
+
 	public static Method getMethod(String operation) {
 		Method[] methods = InstructionSet.class.getDeclaredMethods();
 		for (Method method : methods) {

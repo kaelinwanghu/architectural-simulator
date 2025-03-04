@@ -1,7 +1,8 @@
 package engine;
 
 import engine.types.Register;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Arrays;
 
 public final class Assembler {
@@ -61,14 +62,14 @@ public final class Assembler {
 		for (int i = 0; i < operands.length; i++) {
 			operands[i] = operands[i].trim();
 		}
-		if (pseudoInstructions.contains(operation)) {
-			// parsePseudoInstruction(operation, operands, processor);
+		if (pseudoInstructions.keySet().contains(operation)) {
+			parsePseudoInstruction(operation, operands, processor);
 			return;
 		}
+		System.out.println(operation);
 		Class<?>[] types = InstructionSet.getMethod(operation).getParameterTypes();
 		if (types == null)
 			throw new IllegalArgumentException(operation + " is an invalid operation");
-		
 		if (types.length != operands.length) 
 			throw new IllegalArgumentException("Invalid operands number");
 		
@@ -81,10 +82,10 @@ public final class Assembler {
 				parameters[i] = r;
 			} else if (types[i] == int.class) {
 				int immediate = parseInteger(operands[i]); 
-				if (operation.equals("lui") && (immediate < 0 || immediate > 1023)) {
+				if (operation.equals("lui") && (immediate < 0 || immediate > 0x3ff)) {
 					throw new IllegalArgumentException("Immediate must be a value between 0x000 and 0x3ff");
 				}
-				else if (immediate < -64 || immediate > 63) {
+				else if (!operation.equals("lui") && (immediate < -64 || immediate > 63)) {
 					throw new IllegalArgumentException("Signed immediate must be a value between -64 and 63");
 				}
 				parameters[i] = immediate;
@@ -130,60 +131,73 @@ public final class Assembler {
 		throw new IllegalArgumentException(number + " is an invalid short");
 	}
 
+	/**
+	 * Pseudo-instruction parser that formulates the pseudo-instructions into actual instructions and then adds them to the processor
+	 * @param operation the pseudo-operation to be performed
+	 * @param operands the operands of the pseudo-operation
+	 * @param processor the processor (necessary to call back to add i)
+	 */
 	public static void parsePseudoInstruction(String operation, String[] operands, Processor processor)
 	{
+		// Do a quick check to ensure that the operands number is valid
+		if (pseudoInstructions.get(operation) != operands.length) {
+			throw new IllegalArgumentException("Invalid operands number");
+		}
 		StringBuilder actualInstructions = new StringBuilder();
 		switch (operation) {
 			case "nop": {
-				actualInstructions.append("add r0, r0 ");
-				for (int i = 0; i < operands.length; ++i)
-				{
-					actualInstructions.append(operands);
-					actualInstructions.append(" ");
-				}
+				actualInstructions.append("add r0, r0");
 				parseInstruction(actualInstructions.toString(), processor);
 				break;
 			}
 			case "halt": {
-				actualInstructions.append("jalr r0, r0 ");
-				for (int i = 0; i < operands.length; ++i)
-				{
-					actualInstructions.append(operands);
-					actualInstructions.append(" ");
-				}
+				actualInstructions.append("jalr r0, r0");
 				parseInstruction(actualInstructions.toString(), processor);
 				break;
 			}
 			case "lli": {
-				actualInstructions.append("add " + (parseInteger(operands[0]) & 0x3f));
-				for (int i = 1; i < operands.length; ++i)
-				{
-					actualInstructions.append(operands);
-					actualInstructions.append(" ");
-				}
+				// lli really translates down to addi with a mask of only the first 6 bits of the immediate
+				actualInstructions.append("addi " + operands[0] + ", " + operands[0] + ", ");
+				actualInstructions.append((parseInteger(operands[1]) & 0x3f));
 				parseInstruction(actualInstructions.toString(), processor);
 				break;
 			}
 			case "movi": {
-				actualInstructions.append("lui " + (parseInteger(operands[0]) & 0x3ff));
-				for (int i = 0; i < operands.length; ++i)
+				// movi is an lui + lli pair, which necessitates 2 stringbuilder parses
+				int immediate = parseInteger(operands[1]);
+				// Check immediate to make sure it is within bounds
+				if (immediate < 0 || immediate > 0xFFFF)
 				{
-					actualInstructions.append(operands);
-					actualInstructions.append(" ");
+					throw new IllegalArgumentException("Immediate must be a value between 0x0000 and 0xfff");
 				}
+				// Append lui and shift the operand back 6 so it can be correctly shifted by lui
+				actualInstructions.append("lui " + operands[0] + ", ");
+				actualInstructions.append(immediate >> 6);
 				parseInstruction(actualInstructions.toString(), processor);
+
+				// Reset stringbuilder
 				actualInstructions.setLength(0);
-				actualInstructions.append("add " + (parseInteger(operands[0]) & 0x3f));
+
+				// And then append addi (lli) with the first 6 bits to be parsed
+				actualInstructions.append("addi " + operands[0] + ", " + operands[0] + ", ");
+				actualInstructions.append(immediate & 0x3f);
 				parseInstruction(actualInstructions.toString(), processor);
 				break;
 			}
+			// .fill and .space are not compatible with this version of the RISC, since it has a dedicated memory space
 			case ".fill": {
+
 				break;
 			}
 			case ".space": {
 				break;
 			}
+			default: {
+				throw new IllegalCallerException("Invalid pseudo-instruction");
+			}
 		}
 	}
-	private static final HashSet<String> pseudoInstructions = new HashSet<>(Arrays.asList("nop", "halt", "lli", "movi", ".fill", ".space"));
+
+	// The pseudoInstructions to check against as well as how many operands they have (Java object instantiation sucks)
+	private static final HashMap<String, Integer> pseudoInstructions = new HashMap<>(Map.of("nop", 0, "halt", 0, "lli", 2, "movi", 2, ".fill", 1, ".space", 1));
 }
