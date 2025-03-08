@@ -39,7 +39,7 @@ public class Processor {
 		}
 	}
 			
-	public boolean execute(boolean stepped) throws Exception {
+	public boolean execute(boolean stepped) throws IllegalArgumentException {
 		InstructionSet instructionSet = new InstructionSet(this);
 		Instruction instruction;
 		int oldPc;

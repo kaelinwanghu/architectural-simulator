@@ -192,10 +192,6 @@ public class Simulator extends JFrame {
 				executeStep.setEnabled(false);
 				assemble.setEnabled(true);
 			}
-		} catch (InvocationTargetException ex) {
-			storageViewer.refresh();
-			assemblyPanel.repaint();
-			errorDialog.showError(ex.getCause().getMessage());
 		} catch (Exception ex) {
 			storageViewer.refresh();
 			assemblyPanel.repaint();
