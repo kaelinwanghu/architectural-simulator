@@ -3,7 +3,6 @@ package engine;
 import engine.types.Register;
 import engine.types.Instruction;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
@@ -15,8 +14,9 @@ public final class Assembler {
 	}
 
 	public static void assemble(String data, String program, Processor processor) {
+		String noInstructionsString = "Please enter one or more instructions";
 		if (program.trim().isEmpty())
-			throw new IllegalArgumentException("Please enter one or more instructions");
+			throw new IllegalArgumentException(noInstructionsString);
 		
 		// Resetting static variables
 		processor.clear();
@@ -25,15 +25,11 @@ public final class Assembler {
 
 		
 		String[] lines = program.toLowerCase().trim().split("\\n+");
-		List<String> instructionLines = preprocessProgram(lines);
-        if (instructionLines.isEmpty()) {
-            throw new IllegalArgumentException("Please enter one or more instructions");
-		}
 		boolean hasInstruction = false;
-		for (String line : instructionLines)
+		for (String line : lines)
 		{
 			// Remove comments if there are any for each line, and trim it
-			String cleanLine = removeComment(line).trim();
+			String cleanLine = preprocessLine(line);
 			// If the line still has something, parse it and indicate that instructions exist
 			if (!cleanLine.isEmpty()) {
 				hasInstruction = true;
@@ -41,9 +37,14 @@ public final class Assembler {
 			}
 		}
 		if (!hasInstruction) {
-			throw new IllegalArgumentException("Please enter one or more instructions");
+			throw new IllegalArgumentException(noInstructionsString);
 		}
 		
+		resolveSymbolicLabels(processor);
+		for (Map.Entry<String, Integer> entry : tags.entrySet()) {
+			System.out.println(entry.getKey() + ":" + entry.getValue().toString());
+		}
+	
 		if (data.trim().isEmpty())
 			return;
 			
@@ -55,21 +56,26 @@ public final class Assembler {
 			}
 		}
 
-		// changeSymbolicTags(processor);
 	}
 
-	private static List<String> preprocessProgram(String[] lines) {
-	List<String> instructions = new ArrayList<>();
-	for (String line : lines) {
+	/**
+	 * Proprocesses a line by removing comments and getting/stripping the label from a line (if it exists)
+	 * @param line the line to process
+	 * @return the post-processed line, ready to be added to the program
+	 */
+	private static String preprocessLine(String line) {
+		// Remove comment first
 		String cleanLine = removeComment(line).trim();
 		if (cleanLine.isEmpty()) {
-			continue;
+			return cleanLine;
 		}
 
+		System.out.println("cleanLine: " + cleanLine);
 		// Check if a label is present.
 		if (cleanLine.contains(":")) {
 			String[] parts = cleanLine.split(":", 2);
 			String label = parts[0].trim();
+			System.out.println("label: " + label);
 			if (label.isEmpty()) {
 				throw new IllegalArgumentException("Empty label");
 			}
@@ -79,15 +85,11 @@ public final class Assembler {
 			// Record the label with the current instruction address 
 			tags.put(label, instructionAddress);
 			cleanLine = parts[1].trim();
+			System.out.println("rest: " + cleanLine);
 		}
-		if (!cleanLine.isEmpty()) {
-			instructions.add(cleanLine);
-			instructionAddress += 2; // 2 bytes per instruction
-		}
+		instructionAddress += 2; // 2 bytes per instruction
+		return cleanLine;
 	}
-	return instructions;
-}
-
 
 	/**
 	 * Removes the comment section of a line (anything that goes after the '#' character)
@@ -273,13 +275,17 @@ public final class Assembler {
             Object[] operands = instr.getOperands();
             int currentAddress = i * 2;
             for (int j = 0; j < operands.length; j++) {
+				System.out.println("operand " + j + ": " + operands[j] + " with type: " + operands[j].getClass());
                 if (operands[j] instanceof String label) {
-                    if (!tags.containsKey(label))
-                        throw new IllegalArgumentException("Undefined label: " + label);
+                    if (!tags.containsKey(label)) {
+						throw new IllegalArgumentException("Undefined label");
+					}
                     int targetAddress = tags.get(label);
                     int offset = targetAddress - currentAddress - 2;
                     if (offset < -64 || offset > 63)
-                        throw new IllegalArgumentException("Branch offset out of range for label: " + label);
+					{
+						throw new IllegalArgumentException("Branch offset out of range");
+					}
                     operands[j] = offset;
                 }
             }
