@@ -24,9 +24,12 @@ public class Register {
 	}
 	
 	public void setValue(short value) {
-		if (!writable)
+		if (number == 0) {
+			return;
+		}
+		if (!writable) {
 			throw new IllegalArgumentException("Can not write to R" + number);
-
+		}
 		this.value = value;
 	}
 	
@@ -35,8 +38,8 @@ public class Register {
 	}
 	
 	public boolean equals(Object o) {
-		if (o instanceof Register)
-			return value == ((Register)o).value;
+		if (o instanceof Register r)
+			return value == r.value;
 		
 		return false;
 	}

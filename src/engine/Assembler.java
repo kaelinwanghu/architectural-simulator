@@ -5,6 +5,7 @@ import engine.types.Instruction;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ArrayList;
+import java.lang.reflect.Method;
 
 public final class Assembler {
 
@@ -15,8 +16,9 @@ public final class Assembler {
 
 	public static void assemble(String data, String program, Processor processor) {
 		String noInstructionsString = "Please enter one or more instructions";
-		if (program.trim().isEmpty())
+		if (program.trim().isEmpty()) {
 			throw new IllegalArgumentException(noInstructionsString);
+		}
 		
 		// Resetting static variables
 		processor.clear();
@@ -33,6 +35,7 @@ public final class Assembler {
 			// If the line still has something, parse it and indicate that instructions exist
 			if (!cleanLine.isEmpty()) {
 				hasInstruction = true;
+				System.out.println("cleanLine2: " + cleanLine);
 				parseInstruction(cleanLine, processor);
 			}
 		}
@@ -77,11 +80,15 @@ public final class Assembler {
 			String label = parts[0].trim();
 			System.out.println("label: " + label);
 			if (label.isEmpty()) {
-				throw new IllegalArgumentException("Empty label");
+				throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Empty label");
+			}
+			else if (!checkLabelValidity(label)) {
+				throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Labels can only contain alphanumeric symbols and \'.\' or \'_\'");
 			}
 			if (parts[1].trim().isEmpty()) {
-				throw new IllegalArgumentException("Cannot have a line with just a label");
+				throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Cannot have a line with just a label");
 			}
+
 			// Record the label with the current instruction address 
 			tags.put(label, instructionAddress);
 			cleanLine = parts[1].trim();
@@ -89,6 +96,17 @@ public final class Assembler {
 		}
 		instructionAddress += 2; // 2 bytes per instruction
 		return cleanLine;
+	}
+
+	private static boolean checkLabelValidity(String label) {
+		int labelLength = label.length();
+		for (int i = 0; i < labelLength; ++i) {
+			char c = label.charAt(i);
+			if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && (c != '.') && (c != '_')) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -102,8 +120,16 @@ public final class Assembler {
     }
 	
 	private static void parseInstruction(String instruction, Processor processor) {
-		String operation = instruction.substring(0, instruction.indexOf(' '));
-		String[] operands = instruction.substring(instruction.indexOf(' ') + 1).split(",");
+		String operation;
+		String[] operands = {};
+		if (instruction.indexOf(' ') != -1) {
+			operation = instruction.substring(0, instruction.indexOf(' '));
+			operands = instruction.substring(instruction.indexOf(' ') + 1).split(",");
+		}
+		else {
+			operation = instruction;
+		}
+		System.out.println("operation: " + operation);
 		for (int i = 0; i < operands.length; i++) {
 			operands[i] = operands[i].trim();
 		}
@@ -112,28 +138,31 @@ public final class Assembler {
 			parsePseudoInstruction(operation, operands, processor);
 			return;
 		}
-		Class<?>[] types = InstructionSet.getMethod(operation).getParameterTypes();
-		if (types == null)
-			throw new IllegalArgumentException(operation + " is an invalid operation");
+		Method m = InstructionSet.getMethod(operation);
+		if (m == null) {
+			throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + operation + " is an invalid operation");
+		}
+		Class<?>[] types = m.getParameterTypes();
 		if (types.length != operands.length) 
-			throw new IllegalArgumentException("Invalid operands number");
+			throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Invalid operands number");
 		
 		Object[] parameters = new Object[types.length];
 		for (int i = 0; i < types.length; i++) {
 			if (types[i] == Register.class) {
 				Register r = processor.getRegisterFile().getRegister(operands[i]);
-				if (r == null)
-					throw new IllegalArgumentException(operands[i] + " is an invalid register name");
+				if (r == null) {
+					throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + operands[i] + " is an invalid register name");
+				}
 				parameters[i] = r;
 			} else if (types[i] == int.class) {
 				Integer immediate = parseIntegerNoThrow(operands[i]); 
 				if (immediate != null)
 				{
 					if (operation.equals("lui") && (immediate < 0 || immediate > 0x3ff)) {
-						throw new IllegalArgumentException("Upper immediate must be a value between 0x000 and 0x3ff");
+						throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Upper immediate must be a value between 0x000 and 0x3ff");
 					}
 					else if (!operation.equals("lui") && (immediate < -64 || immediate > 63)) {
-						throw new IllegalArgumentException("Signed immediate must be a value between -64 and 63");
+						throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Signed immediate must be a value between -64 and 63");
 					}
 					parameters[i] = immediate;
 				}
@@ -143,7 +172,7 @@ public final class Assembler {
                         parameters[i] = operands[i];
 					}
 					else {
-						throw new IllegalArgumentException("Invalid immediate operand: " + operands[i]);
+						throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Invalid immediate operand: " + operands[i]);
 					}
 				}
 			}
@@ -153,13 +182,15 @@ public final class Assembler {
 	
 	private static void parseData(String data, Processor processor) {
 		String[] operands = data.split("\\s+");
-		if (operands.length != 2)
+		if (operands.length != 2) {
 			throw new IllegalArgumentException(data + " is an invalid data format");
+		}
 		
 		int address = parseInteger(operands[0]);
 		
-		if (!processor.getMemory().isWordAddress(address))
+		if (!processor.getMemory().isWordAddress(address)) {
 			throw new IllegalArgumentException("Invalid word address (" + address + ")");
+		}
 		
 		processor.getMemory().setWord(address, parseShort(operands[1]));
 	}
@@ -205,7 +236,7 @@ public final class Assembler {
 	 * Pseudo-instruction parser that formulates the pseudo-instructions into actual instructions and then adds them to the processor
 	 * @param operation the pseudo-operation to be performed
 	 * @param operands the operands of the pseudo-operation
-	 * @param processor the processor (necessary to call back to add i)
+	 * @param processor the processor (necessary to call back to add instructions)
 	 */
 	private static void parsePseudoInstruction(String operation, String[] operands, Processor processor)
 	{
@@ -216,10 +247,12 @@ public final class Assembler {
 		StringBuilder actualInstructions = new StringBuilder();
 		switch (operation) {
 			case "nop": {
-				actualInstructions.append("add r0, r0");
+				// add r0, r0, r0 triggers a write to r0 error, so r1 it is for now
+				actualInstructions.append("add r0, r0, r0");
 				parseInstruction(actualInstructions.toString(), processor);
 				break;
 			}
+			// TODO: think of a solution to this later (maybe jank it)
 			case "halt": {
 				actualInstructions.append("jalr r0, r0");
 				parseInstruction(actualInstructions.toString(), processor);
@@ -233,12 +266,12 @@ public final class Assembler {
 				break;
 			}
 			case "movi": {
-				// movi is an lui + lli pair, which necessitates 2 stringbuilder parses
+				// movi is an lui + lli pair, which necessitates 2 instructions and thus 2 stringbuilder parses
 				int immediate = parseInteger(operands[1]);
 				// Check immediate to make sure it is within bounds
 				if (immediate < 0 || immediate > 0xFFFF)
 				{
-					throw new IllegalArgumentException("Word immediate must be a value between 0x0000 and 0xfff");
+					throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Word immediate must be a value between 0x0000 and 0xfff");
 				}
 				// Append lui and shift the operand back 6 so it can be correctly shifted by lui
 				actualInstructions.append("lui " + operands[0] + ", ");
@@ -252,6 +285,8 @@ public final class Assembler {
 				actualInstructions.append("addi " + operands[0] + ", " + operands[0] + ", ");
 				actualInstructions.append(immediate & 0x3f);
 				parseInstruction(actualInstructions.toString(), processor);
+
+				instructionAddress += 2; // account for the extra instruction
 				break;
 			}
 			// .fill and .space are not compatible with this version of the RISC, since it has a dedicated memory space
@@ -263,7 +298,7 @@ public final class Assembler {
 				break;
 			}
 			default: {
-				throw new IllegalCallerException("Invalid pseudo-instruction");
+				throw new IllegalCallerException("Line " + instructionAddress / 2 + ": " + "Invalid pseudo-instruction");
 			}
 		}
 	}
@@ -278,13 +313,13 @@ public final class Assembler {
 				System.out.println("operand " + j + ": " + operands[j] + " with type: " + operands[j].getClass());
                 if (operands[j] instanceof String label) {
                     if (!tags.containsKey(label)) {
-						throw new IllegalArgumentException("Undefined label");
+						throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Undefined label");
 					}
                     int targetAddress = tags.get(label);
                     int offset = targetAddress - currentAddress - 2;
                     if (offset < -64 || offset > 63)
 					{
-						throw new IllegalArgumentException("Branch offset out of range");
+						throw new IllegalArgumentException("Line " + instructionAddress / 2 + ": " + "Branch offset out of range");
 					}
                     operands[j] = offset;
                 }
@@ -292,6 +327,7 @@ public final class Assembler {
         }
     }
 
+	// Assembler variable to keep track of the number of instructions (good for error displays and label resolving)
 	private static int instructionAddress = 0;
 	
 	private static HashMap<String, Integer> tags = new HashMap<>();

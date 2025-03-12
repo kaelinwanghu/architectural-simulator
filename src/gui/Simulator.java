@@ -217,12 +217,9 @@ public class Simulator extends JFrame {
 			main.add(assemblyPanel);
 			main.validate();
 			scheduleDialog.setVisible(false);
-		} catch (IllegalArgumentException ex) {
-			processor.clear();
-			errorDialog.showError(ex.getMessage());
 		} catch (Exception ex) {
 			processor.clear();
-			errorDialog.showError("Could not parse the code!");
+			errorDialog.showError(ex.getMessage());
 		}
 	}
 	
